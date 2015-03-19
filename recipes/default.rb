@@ -20,8 +20,27 @@
 
 node.set[:dhcp][:options]['domain-name-servers'] = "131.179.128.30, 131.179.128.16"
 node.set[:dhcp][:parameters]['ddns-update-style'] = "none"
-node.set[:dhcp][:networks] = [ '131.179.144.0_24' ]
-node.set[:dhcp][:groups] = [ 'static', 'deny']
 node.set[:dhcp][:parameters]['max-lease-time'] = "3600"
 node.set[:dhcp][:parameters]['default-lease-time'] = "1800"
 include_recipe "dhcp::server"
+
+
+chef_gem 'chef-vault'
+require 'chef-vault'
+
+subnet = ChefVault::Item.load('dhcp', 'subnet')
+dhcp_subnet subnet['address'] do
+  range subnet['range']
+  netmask subnet['netmask']
+  broadcast subnet['broadcast']
+  routers subnet['routers']
+  options subnet['options']
+end
+
+%w(static deny).each do |d|
+  g = ChefVault::Item.load('dhcp', "group_#{d}")
+  dhcp_group g['name'] do
+    parameters g['parameters']
+    hosts g['hosts']
+  end
+end
